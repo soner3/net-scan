@@ -25,6 +25,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/soner3/net-scan/cmd/host"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -72,12 +73,15 @@ func init() {
 	// will be global for your application.
 
 	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.net-scan.yaml)")
+	rootCmd.PersistentFlags().StringP("file", "f", "net-scan.hosts", "Name of file to save and load hosts")
+	viper.BindPFlag("file", rootCmd.PersistentFlags().Lookup("file"))
 
 	// Cobra also supports local flags, which will only run
 	// when this action is called directly.
 	rootCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
 	versionTemplate := `{{printf "%s: %s - version %s\n" .Name .Short .Version}}`
 	rootCmd.SetVersionTemplate(versionTemplate)
+	rootCmd.AddCommand(host.HostCmd)
 }
 
 // initConfig reads in config file and ENV variables if set.
@@ -97,7 +101,6 @@ func initConfig() {
 	}
 
 	viper.AutomaticEnv() // read in environment variables that match
-	viper.SetEnvPrefix("net-scan")
 
 	// If a config file is found, read it in.
 	if err := viper.ReadInConfig(); err == nil {

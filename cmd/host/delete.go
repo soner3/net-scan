@@ -19,7 +19,7 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 */
-package cmd
+package host
 
 import (
 	"fmt"
@@ -43,7 +43,7 @@ to quickly create a Cobra application.`,
 }
 
 func init() {
-	hostCmd.AddCommand(deleteCmd)
+	HostCmd.AddCommand(deleteCmd)
 
 	// Here you will define your flags and configuration settings.
 
