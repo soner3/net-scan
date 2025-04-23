@@ -22,9 +22,11 @@ THE SOFTWARE.
 package host
 
 import (
-	"fmt"
+	"os"
 
+	"github.com/soner3/net-scan/host/action"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 )
 
 // deleteCmd represents the delete command
@@ -37,8 +39,12 @@ and usage of using your command. For example:
 Cobra is a CLI library for Go that empowers applications.
 This application is a tool to generate the needed files
 to quickly create a Cobra application.`,
-	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("delete called")
+	SilenceUsage: true,
+	Aliases:      []string{"d"},
+	Args:         cobra.MinimumNArgs(1),
+	RunE: func(cmd *cobra.Command, args []string) error {
+		filename := viper.GetString("file")
+		return action.DeleteAction(os.Stdout, filename, args)
 	},
 }
 

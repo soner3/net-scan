@@ -22,9 +22,11 @@ THE SOFTWARE.
 package host
 
 import (
-	"fmt"
+	"os"
 
+	"github.com/soner3/net-scan/host/action"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 )
 
 // listCmd represents the list command
@@ -37,8 +39,11 @@ and usage of using your command. For example:
 Cobra is a CLI library for Go that empowers applications.
 This application is a tool to generate the needed files
 to quickly create a Cobra application.`,
-	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("list called")
+	Aliases: []string{"l"},
+	Args:    cobra.MaximumNArgs(0),
+	RunE: func(cmd *cobra.Command, args []string) error {
+		filename := viper.GetString("file")
+		return action.ListAction(os.Stdout, filename)
 	},
 }
 

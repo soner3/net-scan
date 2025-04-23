@@ -19,41 +19,58 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 */
-package host
+package action
 
 import (
-	"github.com/spf13/cobra"
+	"fmt"
+	"io"
+
+	"github.com/soner3/net-scan/host"
 )
 
-// hostCmd represents the host command
-var HostCmd = &cobra.Command{
-	Use:   "host",
-	Short: "Manage predefined hosts for quick access",
-	Long: `Manage a list of predefined hosts used across different net-scan commands.
+func AddAction(out io.Writer, filename string, args []string) error {
+	hl := host.NewHostList()
+	if err := hl.Load(filename); err != nil {
+		return err
+	}
 
-This command allows you to add, delete, or list commonly used targets
-so you don't have to retype IPs or domains for every scan.
+	for _, h := range args {
+		if err := hl.Add(h); err != nil {
+			return err
+		}
+		_, err := fmt.Fprintln(out, "Added host:", h)
+		if err != nil {
+			return err
+		}
+	}
 
-Subcommands:
-  - list:    Show all saved hosts
-  - add:     Add a new host to the list
-  - delete:  Remove a host from the list
-
-Example usage:
-  net-scan host add myserver 192.168.1.10
-  net-scan host list
-  net-scan host delete myserver`,
+	return hl.Save(filename)
 }
 
-func init() {
-	HostCmd.SetErrPrefix("Host Error:")
-	// Here you will define your flags and configuration settings.
+func DeleteAction(out io.Writer, filename string, args []string) error {
+	hl := host.NewHostList()
+	if err := hl.Load(filename); err != nil {
+		return err
+	}
 
-	// Cobra supports Persistent Flags which will work for this command
-	// and all subcommands, e.g.:
-	// hostCmd.PersistentFlags().String("foo", "", "A help for foo")
+	for _, h := range args {
+		if err := hl.Remove(h); err != nil {
+			return err
+		}
+		_, err := fmt.Fprintln(out, "Deleted host:", h)
+		if err != nil {
+			return err
+		}
+	}
 
-	// Cobra supports local flags which will only run when this command
-	// is called directly, e.g.:
-	// hostCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
+	return hl.Save(filename)
+}
+
+func ListAction(out io.Writer, filename string) error {
+	hl := host.NewHostList()
+	if err := hl.Load(filename); err != nil {
+		return err
+	}
+	_, err := fmt.Fprint(out, hl)
+	return err
 }
