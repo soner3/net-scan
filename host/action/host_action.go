@@ -22,23 +22,41 @@ THE SOFTWARE.
 package action
 
 import (
+	"bufio"
 	"fmt"
 	"io"
 
 	"github.com/soner3/net-scan/host"
+	"github.com/soner3/net-scan/util"
 )
 
-func AddAction(out io.Writer, filename string, args []string) error {
+const ADD_MSG = "Added host:"
+const DELETE_MSG = "Deleted host:"
+
+// Add args from command line and input from Stdin to host list
+func AddAction(out io.Writer, filename string, args []string, input io.Reader) error {
 	hl := host.NewHostList()
 	if err := hl.Load(filename); err != nil {
 		return err
 	}
 
-	for _, h := range args {
-		if err := hl.Add(h); err != nil {
-			return err
+	piped, err := util.IsPiped()
+	if err != nil {
+		return err
+	}
+
+	if piped {
+		scanner := bufio.NewScanner(input)
+		for scanner.Scan() {
+			err := printOut(out, hl.Add, scanner.Text(), ADD_MSG)
+			if err != nil {
+				return err
+			}
 		}
-		_, err := fmt.Fprintln(out, "Added host:", h)
+	}
+
+	for _, h := range args {
+		err := printOut(out, hl.Add, h, ADD_MSG)
 		if err != nil {
 			return err
 		}
@@ -47,17 +65,30 @@ func AddAction(out io.Writer, filename string, args []string) error {
 	return hl.Save(filename)
 }
 
-func DeleteAction(out io.Writer, filename string, args []string) error {
+// Delete args from command line and input from Stdin from host list
+func DeleteAction(out io.Writer, filename string, args []string, input io.Reader) error {
 	hl := host.NewHostList()
 	if err := hl.Load(filename); err != nil {
 		return err
 	}
 
-	for _, h := range args {
-		if err := hl.Remove(h); err != nil {
-			return err
+	piped, err := util.IsPiped()
+	if err != nil {
+		return err
+	}
+
+	if piped {
+		scanner := bufio.NewScanner(input)
+		for scanner.Scan() {
+			err := printOut(out, hl.Remove, scanner.Text(), DELETE_MSG)
+			if err != nil {
+				return err
+			}
 		}
-		_, err := fmt.Fprintln(out, "Deleted host:", h)
+	}
+
+	for _, h := range args {
+		err := printOut(out, hl.Remove, h, DELETE_MSG)
 		if err != nil {
 			return err
 		}
@@ -66,6 +97,7 @@ func DeleteAction(out io.Writer, filename string, args []string) error {
 	return hl.Save(filename)
 }
 
+// List of the hosts in the host file
 func ListAction(out io.Writer, filename string) error {
 	hl := host.NewHostList()
 	if err := hl.Load(filename); err != nil {
@@ -73,4 +105,16 @@ func ListAction(out io.Writer, filename string) error {
 	}
 	_, err := fmt.Fprint(out, hl)
 	return err
+}
+
+// Wrapper for printing action to Stdout
+func printOut(out io.Writer, actionFunc func(string) error, actionIn string, outMsg string) error {
+	if err := actionFunc(actionIn); err != nil {
+		return err
+	}
+	_, err := fmt.Fprintln(out, outMsg, actionIn)
+	if err != nil {
+		return err
+	}
+	return nil
 }

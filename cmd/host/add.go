@@ -32,19 +32,23 @@ import (
 // addCmd represents the add command
 var addCmd = &cobra.Command{
 	Use:   "add",
-	Short: "A brief description of your command",
-	Long: `A longer description that spans multiple lines and likely contains examples
-and usage of using your command. For example:
+	Short: "Adds one or more hosts using args: <host1> <host2> ... <hostN>",
+	Long: `Adds one or more hosts to the persistent host list.
 
-Cobra is a CLI library for Go that empowers applications.
-This application is a tool to generate the needed files
-to quickly create a Cobra application.`,
+You can provide hosts directly as command-line arguments:
+  net-scan host add host1 host2 host3
+
+Alternatively, you can provide a list of hosts via stdin:
+  cat hosts.txt | net-scan host add
+
+Each host must be on a separate line when passed via stdin.
+
+All added hosts will be saved to the configured hosts file (default: net-scan.hosts).`,
 	SilenceUsage: true,
 	Aliases:      []string{"a"},
-	Args:         cobra.MinimumNArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		filename := viper.GetString("file")
-		return action.AddAction(os.Stdout, filename, args)
+		return action.AddAction(os.Stdout, filename, args, os.Stdin)
 	},
 }
 

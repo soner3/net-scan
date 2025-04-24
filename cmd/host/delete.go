@@ -32,19 +32,23 @@ import (
 // deleteCmd represents the delete command
 var deleteCmd = &cobra.Command{
 	Use:   "delete",
-	Short: "A brief description of your command",
-	Long: `A longer description that spans multiple lines and likely contains examples
-and usage of using your command. For example:
+	Short: "Deletes one or more hosts using args: <host1> <host2> ... <hostN>",
+	Long: `Deletes one or more hosts from the persistent host list.
 
-Cobra is a CLI library for Go that empowers applications.
-This application is a tool to generate the needed files
-to quickly create a Cobra application.`,
+You can provide hosts to delete directly as command-line arguments:
+  net-scan host delete host1 host2 host3
+
+Alternatively, you can provide a list of hosts via stdin:
+  cat remove-these.txt | net-scan host delete
+
+Each host must be on a separate line when passed via stdin.
+
+The updated host list will be saved to the configured hosts file (default: net-scan.hosts).`,
 	SilenceUsage: true,
 	Aliases:      []string{"d"},
-	Args:         cobra.MinimumNArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		filename := viper.GetString("file")
-		return action.DeleteAction(os.Stdout, filename, args)
+		return action.DeleteAction(os.Stdout, filename, args, os.Stdin)
 	},
 }
 

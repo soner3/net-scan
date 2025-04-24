@@ -26,6 +26,8 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"os/exec"
+	"strings"
 	"testing"
 
 	"github.com/soner3/net-scan/host"
@@ -64,13 +66,12 @@ func setup(t *testing.T, hosts []string, initList bool) string {
 }
 
 func TestHostAddAndDeleteAction(t *testing.T) {
-
 	testData := []struct {
 		name        string
 		args        []string
 		expectedOut string
 		initList    bool
-		execAction  func(out io.Writer, filename string, args []string) error
+		execAction  func(out io.Writer, filename string, args []string, input io.Reader) error
 	}{
 		{"AddAction", []string{"host1", "host2", "host3"}, "Added host: host1\nAdded host: host2\nAdded host: host3\n", false, action.AddAction},
 		{"DeleteAction", []string{"host1", "host2", "host3"}, "Deleted host: host1\nDeleted host: host2\nDeleted host: host3\n", true, action.DeleteAction},
@@ -81,7 +82,7 @@ func TestHostAddAndDeleteAction(t *testing.T) {
 			var out bytes.Buffer
 			filename := setup(t, td.args, td.initList)
 
-			err := td.execAction(&out, filename, td.args)
+			err := td.execAction(&out, filename, td.args, os.Stdin)
 			if err != nil {
 				t.Errorf("Expected no error, got %q instead", err)
 			}
@@ -113,6 +114,7 @@ func TestHostListAction(t *testing.T) {
 
 func TestIntegration(t *testing.T) {
 	var out bytes.Buffer
+
 	hosts := []string{
 		"host1",
 		"host2",
@@ -133,7 +135,7 @@ func TestIntegration(t *testing.T) {
 	expectedOut += makeActionOutput("Deleted host: %s\n", delHosts)
 	expectedOut += makeActionOutput("%s\n", hostsEnd)
 
-	if err := action.AddAction(&out, filename, hosts); err != nil {
+	if err := action.AddAction(&out, filename, hosts, os.Stdin); err != nil {
 		t.Errorf("Expected no error, got %q instead", err)
 	}
 
@@ -141,7 +143,7 @@ func TestIntegration(t *testing.T) {
 		t.Errorf("Expected no error, got %q instead", err)
 	}
 
-	if err := action.DeleteAction(&out, filename, delHosts); err != nil {
+	if err := action.DeleteAction(&out, filename, delHosts, os.Stdin); err != nil {
 		t.Errorf("Expected no error, got %q instead", err)
 	}
 
@@ -161,4 +163,52 @@ func makeActionOutput(format string, hosts []string) string {
 		out += fmt.Sprintf(format, h)
 	}
 	return out
+}
+
+func TestHostStdinActions(t *testing.T) {
+	buildCmd := exec.Command("go", "build", "-o", t.Name(), "./../../")
+
+	tf, err := os.CreateTemp(".", "test-host-stdin*")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	t.Cleanup(func() {
+		tf.Close()
+		if err := os.Remove(tf.Name()); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.Remove(t.Name()); err != nil {
+			t.Fatal(err)
+		}
+	})
+
+	testData := []struct {
+		name        string
+		args        []string
+		input       string
+		expectedOut string
+		cmd         string
+	}{
+		{"StdinAddAction", []string{"host1", "host2", "host3"}, "host4\nhost5\n", "Added host: host4\nAdded host: host5\nAdded host: host1\nAdded host: host2\nAdded host: host3\n", "add"},
+		{"StdinDeleteAction", []string{"host1", "host2", "host3"}, "host4\nhost5\n", "Deleted host: host4\nDeleted host: host5\nDeleted host: host1\nDeleted host: host2\nDeleted host: host3\n", "delete"},
+	}
+	if err := buildCmd.Run(); err != nil {
+		t.Fatal(err)
+	}
+
+	for _, td := range testData {
+		args := append([]string{"-f", tf.Name(), "host", td.cmd}, td.args...)
+		cmd := exec.Command("./"+t.Name(), args...)
+		cmd.Stdin = strings.NewReader(td.input)
+
+		out, err := cmd.Output()
+		if err != nil {
+			t.Errorf("Expected no error, got %q instead", err)
+		}
+
+		if string(out) != td.expectedOut {
+			t.Errorf("Expected %s, got %s instead", td.expectedOut, string(out))
+		}
+	}
 }

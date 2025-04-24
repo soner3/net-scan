@@ -32,15 +32,19 @@ import (
 // listCmd represents the list command
 var listCmd = &cobra.Command{
 	Use:   "list",
-	Short: "A brief description of your command",
-	Long: `A longer description that spans multiple lines and likely contains examples
-and usage of using your command. For example:
+	Short: "Displays all currently saved hosts",
+	Long: `Displays the list of all currently saved hosts.
 
-Cobra is a CLI library for Go that empowers applications.
-This application is a tool to generate the needed files
-to quickly create a Cobra application.`,
-	Aliases: []string{"l"},
-	Args:    cobra.MaximumNArgs(0),
+This command reads the configured hosts file (default: net-scan.hosts)
+and prints each saved host on a separate line.
+
+Example usage:
+  net-scan host list
+
+No additional arguments are required.`,
+	Aliases:      []string{"l"},
+	SilenceUsage: true,
+	Args:         cobra.MaximumNArgs(0),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		filename := viper.GetString("file")
 		return action.ListAction(os.Stdout, filename)
