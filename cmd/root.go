@@ -26,6 +26,7 @@ import (
 	"os"
 
 	"github.com/soner3/net-scan/cmd/host"
+	"github.com/soner3/net-scan/cmd/scan"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -82,6 +83,7 @@ func init() {
 	versionTemplate := `{{printf "%s: %s - version %s\n" .Name .Short .Version}}`
 	rootCmd.SetVersionTemplate(versionTemplate)
 	rootCmd.AddCommand(host.HostCmd)
+	rootCmd.AddCommand(scan.ScanCmd)
 }
 
 // initConfig reads in config file and ENV variables if set.

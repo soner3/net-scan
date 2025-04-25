@@ -1,1 +1,6 @@
-file: "my-hosts.txt"
+file: "net-scan.hosts"
+scan:
+  ports: [1, 10, 11]
+  port-range: "10-100"
+  network: "tcp"
+  timeout: 1

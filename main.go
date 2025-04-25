@@ -21,7 +21,9 @@ THE SOFTWARE.
 */
 package main
 
-import "github.com/soner3/net-scan/cmd"
+import (
+	"github.com/soner3/net-scan/cmd"
+)
 
 func main() {
 	cmd.Execute()
