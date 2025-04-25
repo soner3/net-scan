@@ -32,41 +32,60 @@ import (
 )
 
 type Config struct {
-	filename      string
-	ports         []int
-	portRange     string
-	network       string
-	timeout       int
-	resolvedPorts []int
+	filename  string
+	ports     []int
+	portRange string
+	network   string
+	timeout   int
+	filter    string
 }
 
-func NewConfig(filename string, ports []int, portRange string, network string, timeout int) *Config {
+func NewConfig(filename string, ports []int, portRange string, network string, timeout int, filter string) *Config {
 	return &Config{
 		filename:  filename,
 		ports:     ports,
 		portRange: portRange,
 		network:   network,
-		timeout:   timeout}
+		timeout:   timeout,
+		filter:    filter}
 }
 
 func ScanAction(out io.Writer, cfg *Config) error {
 	hl := host.NewHostList()
-	if err := validateConfig(cfg, hl); err != nil {
+	resolvedPorts := &[]int{}
+
+	if err := validateConfig(cfg, hl, resolvedPorts); err != nil {
 		return err
 	}
 
-	result := scan.Run(hl, &cfg.resolvedPorts, cfg.network, cfg.timeout)
+	result := scan.Run(hl, resolvedPorts, cfg.network, cfg.timeout)
 
 	for _, res := range *result {
 		output := fmt.Sprintf("%s:\n", res.Host)
 		if res.NotFound {
-			output += "\tNot Found\n\n"
+			output += "\tNot Found\n"
 		} else {
 			portState := res.PortStates
 			for _, ps := range *portState {
-				output += fmt.Sprintf("\t%d/%s: %s\n", ps.Port, cfg.network, ps.Open)
+				switch true {
+				case cfg.filter == "timeout":
+					if ps.Timeout {
+						output += fmt.Sprintf("\t%d/%s: %s\n", ps.Port, cfg.network, ps)
+					}
+				case cfg.filter == "closed":
+					if !ps.Open && !ps.Timeout {
+						output += fmt.Sprintf("\t%d/%s: %s\n", ps.Port, cfg.network, ps)
+					}
+				case cfg.filter == "open":
+					if ps.Open {
+						output += fmt.Sprintf("\t%d/%s: %s\n", ps.Port, cfg.network, ps)
+					}
+				default:
+					output += fmt.Sprintf("\t%d/%s: %s\n", ps.Port, cfg.network, ps)
+				}
+
 			}
-			output += "\n\n"
+			output += "\n"
 		}
 
 		fmt.Fprint(out, output)
@@ -76,7 +95,7 @@ func ScanAction(out io.Writer, cfg *Config) error {
 	return nil
 }
 
-func validateConfig(cfg *Config, hl *host.HostList) error {
+func validateConfig(cfg *Config, hl *host.HostList, resolvedPorts *[]int) error {
 	if err := hl.Load(cfg.filename); err != nil {
 		return err
 	}
@@ -86,6 +105,11 @@ func validateConfig(cfg *Config, hl *host.HostList) error {
 
 	if len(cfg.ports) == 0 && cfg.portRange == "" {
 		return fmt.Errorf("either --ports or --port-range must be set")
+	}
+
+	if cfg.filter != "closed" && cfg.filter != "open" && cfg.filter != "timeout" && cfg.filter != "" {
+		return fmt.Errorf("invalid port state filter")
+
 	}
 
 	for _, p := range cfg.ports {
@@ -115,8 +139,8 @@ func validateConfig(cfg *Config, hl *host.HostList) error {
 		}
 	}
 
-	cfg.resolvedPorts = append(rangePorts, cfg.ports...)
-	sort.Ints(cfg.resolvedPorts)
+	*resolvedPorts = append(rangePorts, cfg.ports...)
+	sort.Ints(*resolvedPorts)
 
 	networks := []string{"tcp", "tcp4", "tcp6", "udp", "udp4", "udp6", "ip", "ip4", "ip6", "unix", "unixgram", "unixpacket"}
 

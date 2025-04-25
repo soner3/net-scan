@@ -24,16 +24,16 @@ package scan
 import (
 	"fmt"
 	"net"
+	"os"
 	"time"
 
 	"github.com/soner3/net-scan/host"
 )
 
-type state bool
-
 type PortState struct {
-	Port int
-	Open state
+	Port    int
+	Timeout bool
+	Open    bool
 }
 
 type ScanResult struct {
@@ -54,11 +54,14 @@ func NewPortState(port int) *PortState {
 	}
 }
 
-func (s state) String() string {
-	if s {
+func (ps PortState) String() string {
+	if ps.Open {
 		return "open"
+	} else if ps.Timeout {
+		return "timeout"
+	} else {
+		return "closed"
 	}
-	return "closed"
 }
 
 // Scan the port on the given host
@@ -67,6 +70,9 @@ func scan(host string, port int, network string, timeout int) *PortState {
 	address := net.JoinHostPort(host, fmt.Sprintf("%d", ps.Port))
 	con, err := net.DialTimeout(network, address, time.Millisecond*time.Duration(timeout))
 	if err != nil {
+		if os.IsTimeout(err) {
+			ps.Timeout = true
+		}
 		return ps
 	}
 	con.Close()
@@ -96,5 +102,4 @@ func Run(hl *host.HostList, ports *[]int, network string, timeout int) *[]ScanRe
 	}
 
 	return &results
-
 }

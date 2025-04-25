@@ -46,30 +46,24 @@ to quickly create a Cobra application.`,
 		portRange := viper.GetString("scan.port-range")
 		network := viper.GetString("scan.network")
 		timeout := viper.GetInt("scan.timeout")
+		filter := viper.GetString("scan.filter-state")
 
-		return action.ScanAction(os.Stdout, action.NewConfig(filename, ports, portRange, network, timeout))
+		return action.ScanAction(os.Stdout, action.NewConfig(filename, ports, portRange, network, timeout, filter))
 	},
 }
 
 func init() {
 	ScanCmd.SetErrPrefix("Scan Error:")
 
-	// Here you will define your flags and configuration settings.
-
-	// Cobra supports Persistent Flags which will work for this command
-	// and all subcommands, e.g.:
-	// scanCmd.PersistentFlags().String("foo", "", "A help for foo")
-
-	// Cobra supports local flags which will only run when this command
-	// is called directly, e.g.:
-	// scanCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
 	ScanCmd.Flags().IntSliceP("ports", "p", []int{}, "Ports to scan on hosts in host file")
 	ScanCmd.Flags().StringP("port-range", "r", "", "Port range to scan on hosts in host file")
 	ScanCmd.Flags().StringP("network", "n", "tcp", "Network to scan")
 	ScanCmd.Flags().IntP("timeout", "t", 1000, "timeout duration for port on host in milliseconds")
+	ScanCmd.Flags().StringP("filter-state", "s", "", "Filter for prt state (closed, timeout, open)")
 
 	viper.BindPFlag("scan.ports", ScanCmd.Flags().Lookup("ports"))
 	viper.BindPFlag("scan.port-range", ScanCmd.Flags().Lookup("port-range"))
 	viper.BindPFlag("scan.network", ScanCmd.Flags().Lookup("network"))
 	viper.BindPFlag("scan.timeout", ScanCmd.Flags().Lookup("timeout"))
+	viper.BindPFlag("scan.filter-state", ScanCmd.Flags().Lookup("filter-state"))
 }

@@ -1,6 +1,7 @@
 file: "net-scan.hosts"
 scan:
   ports: [1, 10, 11]
-  port-range: "10-100"
+  port-range: "10-11"
   network: "tcp"
-  timeout: 1
+  timeout: 1000
+  filter-state: "closed"
