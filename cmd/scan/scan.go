@@ -32,13 +32,13 @@ import (
 // scanCmd represents the scan command
 var ScanCmd = &cobra.Command{
 	Use:   "scan",
-	Short: "A brief description of your command",
-	Long: `A longer description that spans multiple lines and likely contains examples
-and usage of using your command. For example:
+	Short: "Scan ports on hosts defined in a host file",
+	Long: `The scan command connects to specified ports on target hosts
+using a selected network protocol (e.g., tcp, udp, etc.). 
+You can define specific ports or port ranges and apply filters to show only open, closed, or timeout states.
 
-Cobra is a CLI library for Go that empowers applications.
-This application is a tool to generate the needed files
-to quickly create a Cobra application.`,
+Supported network protocols include: 
+tcp, tcp4, tcp6, udp, udp4, udp6, ip, ip4, ip6, unix, unixgram, unixpacket.`,
 	SilenceUsage: true,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		filename := viper.GetString("file")
@@ -55,11 +55,11 @@ to quickly create a Cobra application.`,
 func init() {
 	ScanCmd.SetErrPrefix("Scan Error:")
 
-	ScanCmd.Flags().IntSliceP("ports", "p", []int{}, "Ports to scan on hosts in host file")
-	ScanCmd.Flags().StringP("port-range", "r", "", "Port range to scan on hosts in host file")
-	ScanCmd.Flags().StringP("network", "n", "tcp", "Network to scan")
-	ScanCmd.Flags().IntP("timeout", "t", 1000, "timeout duration for port on host in milliseconds")
-	ScanCmd.Flags().StringP("filter-state", "s", "", "Filter for prt state (closed, timeout, open)")
+	ScanCmd.Flags().IntSliceP("ports", "p", []int{}, "Ports to scan on the target hosts (e.g., 22,80,443)")
+	ScanCmd.Flags().StringP("port-range", "r", "", "Port range to scan on the target hosts (e.g., 20-100)")
+	ScanCmd.Flags().StringP("network", "n", "tcp", "Network protocol to use (tcp, udp, tcp4, tcp6, udp4, udp6, ip, ip4, ip6, unix, unixgram, unixpacket)")
+	ScanCmd.Flags().IntP("timeout", "t", 1000, "Timeout per port in milliseconds")
+	ScanCmd.Flags().StringP("filter-state", "s", "", "Filter scanned results by port state (open, closed, timeout)")
 
 	viper.BindPFlag("scan.ports", ScanCmd.Flags().Lookup("ports"))
 	viper.BindPFlag("scan.port-range", ScanCmd.Flags().Lookup("port-range"))
