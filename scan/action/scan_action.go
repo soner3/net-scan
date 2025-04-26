@@ -27,10 +27,10 @@ import (
 	"io"
 	"os"
 	"slices"
-	"sort"
 
 	"github.com/soner3/net-scan/host"
 	"github.com/soner3/net-scan/scan"
+	"github.com/soner3/net-scan/util"
 )
 
 var (
@@ -40,6 +40,16 @@ var (
 )
 
 var networks = []string{"tcp", "tcp4", "tcp6", "udp", "udp4", "udp6", "ip", "ip4", "ip6", "unix", "unixgram", "unixpacket"}
+
+var cmp = func(a, b int) int {
+	if a < b {
+		return -1
+	} else if a > b {
+		return 1
+	} else {
+		return 0
+	}
+}
 
 type Config struct {
 	filename  string
@@ -84,13 +94,14 @@ func (cfg *Config) validate() (*[]int, error) {
 		return nil, fmt.Errorf("%q: %s", ErrValue, cfg.network)
 	}
 
+	rangePorts := util.Set[int]{}
+
 	for _, p := range cfg.ports {
 		if p < 1 {
 			return nil, fmt.Errorf("%q: %d", ErrValue, p)
 		}
+		rangePorts.Add(p)
 	}
-
-	var rangePorts []int
 
 	if cfg.portRange != "" {
 		var start, end int
@@ -101,21 +112,12 @@ func (cfg *Config) validate() (*[]int, error) {
 			return nil, fmt.Errorf("%q: %s", ErrValue, cfg.portRange)
 		}
 
-		rangePorts = make([]int, 0, end-start+1)
 		for p := start; p <= end; p++ {
-			for i, cfgP := range cfg.ports {
-				if cfgP == p {
-					cfg.ports = slices.Delete(cfg.ports, i, i+1)
-				}
-			}
-			rangePorts = append(rangePorts, p)
+			rangePorts.Add(p)
 		}
 	}
 
-	rangePorts = append(rangePorts, cfg.ports...)
-	sort.Ints(rangePorts)
-
-	return &rangePorts, nil
+	return rangePorts.ToSortedSlice(cmp), nil
 }
 
 func ScanAction(out io.Writer, cfg *Config) error {
@@ -138,21 +140,12 @@ func ScanAction(out io.Writer, cfg *Config) error {
 		} else {
 			portState := res.PortStates
 			for _, ps := range *portState {
-				switch true {
-				case cfg.filter == "timeout":
-					if ps.Timeout {
-						output += fmt.Sprintf("\t%d/%s: %s\n", ps.Port, cfg.network, ps)
+				if cfg.filter != "" {
+					if cfg.filter == ps.Open.String() {
+						output += fmt.Sprintf("\t%d/%s: %s\n", ps.Port, cfg.network, &ps.Open)
 					}
-				case cfg.filter == "closed":
-					if !ps.Open && !ps.Timeout {
-						output += fmt.Sprintf("\t%d/%s: %s\n", ps.Port, cfg.network, ps)
-					}
-				case cfg.filter == "open":
-					if ps.Open {
-						output += fmt.Sprintf("\t%d/%s: %s\n", ps.Port, cfg.network, ps)
-					}
-				default:
-					output += fmt.Sprintf("\t%d/%s: %s\n", ps.Port, cfg.network, ps)
+				} else {
+					output += fmt.Sprintf("\t%d/%s: %s\n", ps.Port, cfg.network, &ps.Open)
 				}
 
 			}

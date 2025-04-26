@@ -30,10 +30,27 @@ import (
 	"github.com/soner3/net-scan/host"
 )
 
+type state int
+
+const (
+	OPEN state = iota
+	TIMEOUT
+	CLOSED
+)
+
+var stateName = map[state]string{
+	OPEN:    "open",
+	TIMEOUT: "timeout",
+	CLOSED:  "closed",
+}
+
+func (s *state) String() string {
+	return stateName[*s]
+}
+
 type PortState struct {
-	Port    int
-	Timeout bool
-	Open    bool
+	Port int
+	Open state
 }
 
 type ScanResult struct {
@@ -51,16 +68,7 @@ func NewScanResult(host string) *ScanResult {
 func NewPortState(port int) *PortState {
 	return &PortState{
 		Port: port,
-	}
-}
-
-func (ps PortState) String() string {
-	if ps.Open {
-		return "open"
-	} else if ps.Timeout {
-		return "timeout"
-	} else {
-		return "closed"
+		Open: CLOSED,
 	}
 }
 
@@ -71,12 +79,12 @@ func scan(host string, port int, network string, timeout int) *PortState {
 	con, err := net.DialTimeout(network, address, time.Millisecond*time.Duration(timeout))
 	if err != nil {
 		if os.IsTimeout(err) {
-			ps.Timeout = true
+			ps.Open = TIMEOUT
 		}
 		return ps
 	}
 	con.Close()
-	ps.Open = true
+	ps.Open = OPEN
 	return ps
 }
 
