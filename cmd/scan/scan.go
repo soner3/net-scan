@@ -53,7 +53,7 @@ tcp, tcp4, tcp6, udp, udp4, udp6, ip, ip4, ip6, unix, unixgram, unixpacket.`,
 }
 
 func init() {
-	ScanCmd.SetErrPrefix("Scan Error:")
+	ScanCmd.SetErrPrefix("Scan Error:\n\t")
 
 	ScanCmd.Flags().IntSliceP("ports", "p", []int{}, "Ports to scan on the target hosts (e.g., 22,80,443)")
 	ScanCmd.Flags().StringP("port-range", "r", "", "Port range to scan on the target hosts (e.g., 20-100)")
