@@ -34,9 +34,9 @@ import (
 )
 
 var (
-	ErrEmpty  = errors.New("flag not set")
-	ErrValue  = errors.New("invalid flag value")
-	ErrFormat = errors.New("invalid flag value format")
+	ErrEmpty  = errors.New("empty value")
+	ErrValue  = errors.New("invalid value")
+	ErrFormat = errors.New("invalid value format")
 )
 
 var networks = []string{"tcp", "tcp4", "tcp6", "udp", "udp4", "udp6", "ip", "ip4", "ip6", "unix", "unixgram", "unixpacket"}
@@ -76,29 +76,25 @@ func (cfg *Config) validate() (*[]int, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer f.Close()
+	hl := host.NewHostList()
+	if err := hl.Load(cfg.filename); err != nil {
+		return nil, err
+	}
+	f.Close()
+
+	if len(hl.Hosts) < 1 {
+		return nil, fmt.Errorf("%w: host file is empty", ErrEmpty)
+	}
 
 	if len(cfg.ports) == 0 && cfg.portRange == "" {
-		return nil, fmt.Errorf("%q: either --ports or --port-range must be set", ErrEmpty)
-	}
-
-	if cfg.filter != "closed" && cfg.filter != "open" && cfg.filter != "timeout" && cfg.filter != "" {
-		return nil, fmt.Errorf("%q: %s", ErrValue, cfg.filter)
-	}
-
-	if !slices.Contains(networks, cfg.network) {
-		return nil, fmt.Errorf("%q: %s", ErrValue, cfg.network)
-	}
-
-	if cfg.timeout < 1 {
-		return nil, fmt.Errorf("%q: %s", ErrValue, cfg.network)
+		return nil, fmt.Errorf("%w: either --ports or --port-range must be set", ErrEmpty)
 	}
 
 	rangePorts := util.Set[int]{}
 
 	for _, p := range cfg.ports {
 		if p < 1 {
-			return nil, fmt.Errorf("%q: %d", ErrValue, p)
+			return nil, fmt.Errorf("%w: %d", ErrValue, p)
 		}
 		rangePorts.Add(p)
 	}
@@ -106,15 +102,27 @@ func (cfg *Config) validate() (*[]int, error) {
 	if cfg.portRange != "" {
 		var start, end int
 		if _, err := fmt.Sscanf(cfg.portRange, "%d-%d", &start, &end); err != nil {
-			return nil, fmt.Errorf("%q: %s", ErrFormat, cfg.portRange)
+			return nil, fmt.Errorf("%w: %s", ErrFormat, cfg.portRange)
 		}
 		if start < 1 || end < 1 || start >= end {
-			return nil, fmt.Errorf("%q: %s", ErrValue, cfg.portRange)
+			return nil, fmt.Errorf("%w: %s", ErrValue, cfg.portRange)
 		}
 
 		for p := start; p <= end; p++ {
 			rangePorts.Add(p)
 		}
+	}
+
+	if !slices.Contains(networks, cfg.network) {
+		return nil, fmt.Errorf("%w: %s", ErrValue, cfg.network)
+	}
+
+	if cfg.timeout < 1 {
+		return nil, fmt.Errorf("%w: %s", ErrValue, cfg.network)
+	}
+
+	if cfg.filter != "closed" && cfg.filter != "open" && cfg.filter != "timeout" && cfg.filter != "" {
+		return nil, fmt.Errorf("%w: %s", ErrValue, cfg.filter)
 	}
 
 	return rangePorts.ToSortedSlice(cmp), nil
@@ -149,10 +157,13 @@ func ScanAction(out io.Writer, cfg *Config) error {
 				}
 
 			}
-			output += "\n"
 		}
+		output += "\n"
 
-		fmt.Fprint(out, output)
+		_, err := fmt.Fprint(out, output)
+		if err != nil {
+			return err
+		}
 
 	}
 

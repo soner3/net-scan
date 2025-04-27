@@ -30,6 +30,7 @@ import (
 	"github.com/soner3/net-scan/scan"
 )
 
+// Should be executed without internet connection
 func TestRun(t *testing.T) {
 	testCases := []struct {
 		name        string
