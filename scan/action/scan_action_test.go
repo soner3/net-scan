@@ -117,6 +117,7 @@ func TestScanActionValidation(t *testing.T) {
 
 }
 
+// Should be executed without internet connection
 func TestScanAction(t *testing.T) {
 	ports := []int{}
 	closedPort := 0
