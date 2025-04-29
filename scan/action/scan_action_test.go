@@ -117,7 +117,6 @@ func TestScanActionValidation(t *testing.T) {
 
 }
 
-// Should be executed without internet connection
 func TestScanAction(t *testing.T) {
 	ports := []int{}
 	closedPort := 0
@@ -147,7 +146,7 @@ func TestScanAction(t *testing.T) {
 		ports []int
 		found bool
 	}{
-		{"1.1.1.1", ports, true},
+		{"192.0.2.1", ports, true},
 		{"localhost", ports, true},
 		{"unknown", nil, false},
 	}
@@ -168,7 +167,7 @@ func TestScanAction(t *testing.T) {
 		}
 		expectedOut += fmt.Sprintf("%s:\n", c.host)
 
-		if c.host == "1.1.1.1" {
+		if c.host == "192.0.2.1" {
 			for _, p := range c.ports {
 				expectedOut += fmt.Sprintf("\t%d/tcp: timeout\n", p)
 			}

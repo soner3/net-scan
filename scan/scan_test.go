@@ -30,7 +30,6 @@ import (
 	"github.com/soner3/net-scan/scan"
 )
 
-// Should be executed without internet connection
 func TestRun(t *testing.T) {
 	testCases := []struct {
 		name        string
@@ -42,7 +41,7 @@ func TestRun(t *testing.T) {
 	}
 
 	localhost := "localhost"
-	timeoutHost := "1.1.1.1"
+	timeoutHost := "192.0.2.1"
 	hl := host.NewHostList()
 	hl.Add(localhost)
 	ports := []int{}
