@@ -26,6 +26,7 @@ import (
 	"os"
 
 	"github.com/soner3/net-scan/cmd/host"
+	"github.com/soner3/net-scan/cmd/ping"
 	"github.com/soner3/net-scan/cmd/scan"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -75,6 +76,7 @@ func init() {
 	rootCmd.SetVersionTemplate(versionTemplate)
 	rootCmd.AddCommand(host.HostCmd)
 	rootCmd.AddCommand(scan.ScanCmd)
+	rootCmd.AddCommand(ping.PingCmd)
 }
 
 // initConfig reads in config file and ENV variables if set.

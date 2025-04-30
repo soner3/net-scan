@@ -4,4 +4,4 @@ scan:
   port-range: "10-11"
   network: "tcp"
   timeout: 1000
-  filter-state: ""
+  filter-state: "open"
