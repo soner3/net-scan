@@ -34,7 +34,32 @@ import (
 var PingCmd = &cobra.Command{
 	Use:   "ping",
 	Short: "Send ICMP ping requests to the hosts in the specified file",
-	Long:  `The ping command sends ICMP echo requests to multiple hosts defined in a file.`,
+	Long: `The ping command sends ICMP echo requests to multiple hosts defined in a file.
+
+By default, the command uses unprivileged ICMP (UDP fallback) when available. On Linux,
+this requires enabling the following sysctl option:
+
+  sudo sysctl -w net.ipv4.ping_group_range="0 2147483647"
+
+If you prefer raw ICMP sockets (more accurate, allows TTL etc.), use the --privileged flag.
+In that case, you must run the binary as root or assign it the required capabilities:
+
+  sudo setcap cap_net_raw=+ep /path/to/net-scan
+
+Advanced features like DSCP/ECN (traffic class) and setting the Don't Fragment bit require
+CAP_NET_ADMIN privileges on Linux.
+
+On Windows, --privileged must be set. It works without elevation but lacks TTL information
+due to Go limitations in x/net/ipv4 and ipv6.
+
+This command is based on the open-source library:
+  https://github.com/prometheus-community/pro-bing
+
+Examples:
+  net-scan ping --count 5 --interval 1s --timeout 5s
+  net-scan ping --privileged
+  net-scan ping --tclass 128 --size 120 --ttl 32
+`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		cfg := &action.Config{
 			Filename:   viper.GetString("file"),

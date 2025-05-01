@@ -26,52 +26,32 @@ import (
 	"time"
 
 	"github.com/soner3/net-scan/host"
-	"github.com/soner3/net-scan/ping"
+	"github.com/soner3/net-scan/http"
 )
 
 type Config struct {
-	Filename   string
-	Timeout    time.Duration
-	Interval   time.Duration
-	Count      int
-	Size       int
-	Ttl        int
-	Iface      string
-	Tclass     int
-	Priveleged bool
+	Filename      string
+	CallFrequency time.Duration
+	Timeout       time.Duration
+	Secure        bool
 }
 
-func NewConfig(filename string, timeout, interval time.Duration, count, size, ttl int, iface string, tclass int, privileged bool) *Config {
+func NewConfig(filename string, callFrequency, timeout time.Duration, secure bool) *Config {
 	return &Config{
-		Filename:   filename,
-		Timeout:    timeout,
-		Interval:   interval,
-		Count:      count,
-		Size:       size,
-		Ttl:        ttl,
-		Iface:      iface,
-		Tclass:     tclass,
-		Priveleged: privileged,
+		Filename:      filename,
+		CallFrequency: callFrequency,
+		Timeout:       timeout,
+		Secure:        secure,
 	}
 }
 
-func PingAction(out io.Writer, cfg *Config) error {
+func HttpAction(out io.Writer, cfg *Config) error {
 	hl := host.NewHostList()
 	if err := hl.Load(cfg.Filename); err != nil {
 		return err
 	}
 	for _, h := range hl.Hosts {
-		pingCfg := ping.NewConfig(
-			cfg.Count,
-			cfg.Size,
-			cfg.Interval,
-			cfg.Timeout,
-			cfg.Ttl,
-			cfg.Iface,
-			cfg.Priveleged,
-			cfg.Tclass,
-		)
-		if err := ping.Run(out, h, pingCfg); err != nil {
+		if err := http.Run(out, h, cfg.Secure, cfg.CallFrequency, cfg.Timeout); err != nil {
 			return err
 		}
 	}

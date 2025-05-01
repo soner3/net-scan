@@ -14,3 +14,7 @@ ping:
   iface: ""
   tclass: -1
   privileged: true
+http:
+  call-frequency: 1s
+  timeout: 5s
+  secure: true

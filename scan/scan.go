@@ -76,7 +76,7 @@ func NewPortState(port int) *PortState {
 func scan(host string, port int, network string, timeout time.Duration) *PortState {
 	ps := NewPortState(port)
 	address := net.JoinHostPort(host, fmt.Sprintf("%d", ps.Port))
-	con, err := net.DialTimeout(network, address, time.Millisecond*timeout)
+	con, err := net.DialTimeout(network, address, timeout)
 	if err != nil {
 		if os.IsTimeout(err) {
 			ps.Open = TIMEOUT

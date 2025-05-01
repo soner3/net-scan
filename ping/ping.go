@@ -24,6 +24,7 @@ package ping
 import (
 	"fmt"
 	"io"
+	"net"
 	"os"
 	"os/signal"
 	"time"
@@ -42,10 +43,28 @@ type Config struct {
 	TClass     int
 }
 
+func NewConfig(count, size int, interval, timeout time.Duration, ttl int, iface string, privileged bool, tclass int) *Config {
+	return &Config{
+		Count:      count,
+		Size:       size,
+		Interval:   interval,
+		Timeout:    timeout,
+		TTL:        ttl,
+		Iface:      iface,
+		Privileged: privileged,
+		TClass:     tclass,
+	}
+}
+
 func Run(out io.Writer, host string, cfg *Config) error {
 	pinger, err := probing.NewPinger(host)
 	if err != nil {
-		return err
+		if _, err := net.LookupHost(host); err != nil {
+			fmt.Fprintf(out, "%s:\n\tNot Found\n\n", host)
+			return nil
+		} else {
+			return err
+		}
 	}
 
 	// Listen for Ctrl-C.
@@ -67,20 +86,20 @@ func Run(out io.Writer, host string, cfg *Config) error {
 	pinger.SetTrafficClass(uint8(cfg.TClass))
 
 	pinger.OnRecv = func(pkt *probing.Packet) {
-		fmt.Fprintf(out, "%d bytes from %s: icmp_seq=%d time=%v\n",
+		fmt.Fprintf(out, "\t%d bytes from %s: icmp_seq=%d time=%v\n",
 			pkt.Nbytes, pkt.IPAddr, pkt.Seq, pkt.Rtt)
 	}
 
 	pinger.OnDuplicateRecv = func(pkt *probing.Packet) {
-		fmt.Fprintf(out, "%d bytes from %s: icmp_seq=%d time=%v ttl=%v (DUP!)\n",
+		fmt.Fprintf(out, "\t%d bytes from %s: icmp_seq=%d time=%v ttl=%v (DUP!)\n",
 			pkt.Nbytes, pkt.IPAddr, pkt.Seq, pkt.Rtt, pkt.TTL)
 	}
 
 	pinger.OnFinish = func(stats *probing.Statistics) {
-		fmt.Fprintf(out, "\n--- %s ping statistics ---\n", stats.Addr)
-		fmt.Fprintf(out, "%d packets transmitted, %d packets received, %v%% packet loss\n",
+		fmt.Fprintf(out, "\n\t--- %s ping statistics ---\n", stats.Addr)
+		fmt.Fprintf(out, "\t%d packets transmitted, %d packets received, %v%% packet loss\n",
 			stats.PacketsSent, stats.PacketsRecv, stats.PacketLoss)
-		fmt.Fprintf(out, "round-trip min/avg/max/stddev = %v/%v/%v/%v\n\n",
+		fmt.Fprintf(out, "\tround-trip min/avg/max/stddev = %v/%v/%v/%v\n\n",
 			stats.MinRtt, stats.AvgRtt, stats.MaxRtt, stats.StdDevRtt)
 	}
 

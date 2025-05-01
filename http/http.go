@@ -19,61 +19,55 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 */
-package action
+package http
 
 import (
+	"fmt"
 	"io"
+	"net"
+	"os"
+	"os/signal"
 	"time"
 
-	"github.com/soner3/net-scan/host"
-	"github.com/soner3/net-scan/ping"
+	probing "github.com/prometheus-community/pro-bing"
 )
 
-type Config struct {
-	Filename   string
-	Timeout    time.Duration
-	Interval   time.Duration
-	Count      int
-	Size       int
-	Ttl        int
-	Iface      string
-	Tclass     int
-	Priveleged bool
-}
+func Run(out io.Writer, host string, secure bool, callFrequency, timeout time.Duration) error {
+	var url string
+	if secure {
+		url = fmt.Sprintf("https://%s", host)
+	} else {
+		url = fmt.Sprintf("http://%s", host)
+	}
 
-func NewConfig(filename string, timeout, interval time.Duration, count, size, ttl int, iface string, tclass int, privileged bool) *Config {
-	return &Config{
-		Filename:   filename,
-		Timeout:    timeout,
-		Interval:   interval,
-		Count:      count,
-		Size:       size,
-		Ttl:        ttl,
-		Iface:      iface,
-		Tclass:     tclass,
-		Priveleged: privileged,
-	}
-}
+	httpCaller := probing.NewHttpCaller(
+		url,
+		probing.WithHTTPCallerCallFrequency(callFrequency),
+		probing.WithHTTPCallerOnResp(func(suite *probing.TraceSuite, info *probing.HTTPCallInfo) {
+			fmt.Fprintf(out, "\tgot resp, status code: %d, latency: %s\n",
+				info.StatusCode,
+				suite.GetGeneralEnd().Sub(suite.GetGeneralStart()),
+			)
+		}),
+		probing.WithHTTPCallerTimeout(timeout),
+	)
 
-func PingAction(out io.Writer, cfg *Config) error {
-	hl := host.NewHostList()
-	if err := hl.Load(cfg.Filename); err != nil {
-		return err
+	// Listen for Ctrl-C.
+	c := make(chan os.Signal, 1)
+	signal.Notify(c, os.Interrupt)
+	go func() {
+		<-c
+		httpCaller.Stop()
+	}()
+
+	fmt.Fprintf(out, "%s:\n", url)
+
+	if _, err := net.LookupHost(host); err != nil {
+		fmt.Fprint(out, "\tNot Found\n\n")
+		return nil
 	}
-	for _, h := range hl.Hosts {
-		pingCfg := ping.NewConfig(
-			cfg.Count,
-			cfg.Size,
-			cfg.Interval,
-			cfg.Timeout,
-			cfg.Ttl,
-			cfg.Iface,
-			cfg.Priveleged,
-			cfg.Tclass,
-		)
-		if err := ping.Run(out, h, pingCfg); err != nil {
-			return err
-		}
-	}
+
+	httpCaller.Run()
+	fmt.Fprintf(out, "\n")
 	return nil
 }

@@ -23,6 +23,7 @@ package scan
 
 import (
 	"os"
+	"time"
 
 	"github.com/soner3/net-scan/scan/action"
 	"github.com/spf13/cobra"
@@ -37,8 +38,15 @@ var ScanCmd = &cobra.Command{
 using a selected network protocol (e.g., tcp, udp, etc.). 
 You can define specific ports or port ranges and apply filters to show only open, closed, or timeout states.
 
-Supported network protocols include: 
-tcp, tcp4, tcp6, udp, udp4, udp6, ip, ip4, ip6, unix, unixgram, unixpacket.`,
+Supported network protocols include:
+  tcp, tcp4, tcp6, udp, udp4, udp6, ip, ip4, ip6, unix, unixgram, unixpacket.
+
+Examples:
+  net-scan scan -p 22,80,443
+  net-scan scan -r 20-100 -t 2s
+  net-scan scan -p 53,123 -n udp -s open
+  net-scan scan --config .net-scan.yaml
+`,
 	SilenceUsage: true,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		filename := viper.GetString("file")
@@ -58,7 +66,7 @@ func init() {
 	ScanCmd.Flags().IntSliceP("ports", "p", []int{}, "Ports to scan on the target hosts (e.g., 22,80,443)")
 	ScanCmd.Flags().StringP("port-range", "r", "", "Port range to scan on the target hosts (e.g., 20-100)")
 	ScanCmd.Flags().StringP("network", "n", "tcp", "Network protocol to use (tcp, udp, tcp4, tcp6, udp4, udp6, ip, ip4, ip6, unix, unixgram, unixpacket)")
-	ScanCmd.Flags().DurationP("timeout", "t", 1000, "Timeout per port in milliseconds")
+	ScanCmd.Flags().DurationP("timeout", "t", time.Millisecond*1000, "Timeout per port")
 	ScanCmd.Flags().StringP("filter-state", "s", "", "Filter scanned results by port state (open, closed, timeout)")
 
 	viper.BindPFlag("scan.ports", ScanCmd.Flags().Lookup("ports"))
