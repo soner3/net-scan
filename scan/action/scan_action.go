@@ -71,18 +71,21 @@ func NewConfig(filename string, ports []int, portRange string, network string, t
 		filter:    filter,
 	}
 }
-
 func (cfg *Config) validate() (*[]int, error) {
-	f, err := os.Open(cfg.filename)
+	if cfg.filename == "" {
+		return nil, fmt.Errorf("%w: filename must be provided", ErrEmpty)
+	}
+
+	file, err := os.Open(cfg.filename)
 	if err != nil {
 		return nil, err
 	}
+	defer file.Close()
+
 	hl := host.NewHostList()
 	if err := hl.Load(cfg.filename); err != nil {
 		return nil, err
 	}
-	f.Close()
-
 	if len(hl.Hosts) < 1 {
 		return nil, fmt.Errorf("%w: host file is empty", ErrEmpty)
 	}
@@ -92,10 +95,9 @@ func (cfg *Config) validate() (*[]int, error) {
 	}
 
 	rangePorts := util.Set[int]{}
-
 	for _, p := range cfg.ports {
-		if p < 1 {
-			return nil, fmt.Errorf("%w: %d", ErrValue, p)
+		if p < 1 || p > 65535 {
+			return nil, fmt.Errorf("%w: port %d is out of valid range (1–65535)", ErrValue, p)
 		}
 		rangePorts.Add(p)
 	}
@@ -103,27 +105,27 @@ func (cfg *Config) validate() (*[]int, error) {
 	if cfg.portRange != "" {
 		var start, end int
 		if _, err := fmt.Sscanf(cfg.portRange, "%d-%d", &start, &end); err != nil {
-			return nil, fmt.Errorf("%w: %s", ErrFormat, cfg.portRange)
+			return nil, fmt.Errorf("%w: port-range format must be start-end", ErrFormat)
 		}
-		if start < 1 || end < 1 || start >= end {
-			return nil, fmt.Errorf("%w: %s", ErrValue, cfg.portRange)
+		if start < 1 || end < 1 || start >= end || end > 65535 {
+			return nil, fmt.Errorf("%w: invalid port range %s", ErrValue, cfg.portRange)
 		}
-
 		for p := start; p <= end; p++ {
 			rangePorts.Add(p)
 		}
 	}
 
 	if !slices.Contains(networks, cfg.network) {
-		return nil, fmt.Errorf("%w: %s", ErrValue, cfg.network)
+		return nil, fmt.Errorf("%w: unsupported network '%s'", ErrValue, cfg.network)
 	}
 
-	if cfg.timeout < 1 {
-		return nil, fmt.Errorf("%w: %s", ErrValue, cfg.network)
+	if cfg.timeout <= 0 {
+		return nil, fmt.Errorf("%w: timeout must be greater than 0", ErrValue)
 	}
 
-	if cfg.filter != "closed" && cfg.filter != "open" && cfg.filter != "timeout" && cfg.filter != "" {
-		return nil, fmt.Errorf("%w: %s", ErrValue, cfg.filter)
+	validFilters := []string{"open", "closed", "timeout", ""}
+	if !slices.Contains(validFilters, cfg.filter) {
+		return nil, fmt.Errorf("%w: unknown filter '%s'", ErrValue, cfg.filter)
 	}
 
 	return rangePorts.ToSortedSlice(cmp), nil

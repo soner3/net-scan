@@ -25,6 +25,7 @@ import (
 	"net"
 	"strconv"
 	"testing"
+	"time"
 
 	"github.com/soner3/net-scan/host"
 	"github.com/soner3/net-scan/scan"
@@ -70,10 +71,10 @@ func TestRun(t *testing.T) {
 
 	}
 
-	localhostRes := scan.Run(hl, &ports, "tcp", 1000)
+	localhostRes := scan.Run(hl, &ports, "tcp", time.Second)
 	hl.Remove(localhost)
 	hl.Add(timeoutHost)
-	timeoutRes := scan.Run(hl, &ports, "tcp", 1000)
+	timeoutRes := scan.Run(hl, &ports, "tcp", time.Second)
 
 	if len(*(*localhostRes)[0].PortStates) != 2 {
 		t.Errorf("Expected %d, got %d instead", 2, len(*localhostRes))

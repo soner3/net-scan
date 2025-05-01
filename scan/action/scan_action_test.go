@@ -30,6 +30,7 @@ import (
 	"slices"
 	"strconv"
 	"testing"
+	"time"
 
 	"github.com/soner3/net-scan/host"
 )
@@ -151,7 +152,7 @@ func TestScanAction(t *testing.T) {
 		{"unknown", nil, false},
 	}
 	slices.Sort(ports)
-	cfg := NewConfig("", ports, "", "tcp", 1000, "")
+	cfg := NewConfig("", ports, "", "tcp", time.Second, "")
 	cfg.filename = setup(t, "ScanActionTest")
 
 	hl := host.NewHostList()
