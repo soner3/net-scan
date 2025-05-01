@@ -73,10 +73,10 @@ func NewPortState(port int) *PortState {
 }
 
 // Scan the port on the given host
-func scan(host string, port int, network string, timeout int) *PortState {
+func scan(host string, port int, network string, timeout time.Duration) *PortState {
 	ps := NewPortState(port)
 	address := net.JoinHostPort(host, fmt.Sprintf("%d", ps.Port))
-	con, err := net.DialTimeout(network, address, time.Millisecond*time.Duration(timeout))
+	con, err := net.DialTimeout(network, address, time.Millisecond*timeout)
 	if err != nil {
 		if os.IsTimeout(err) {
 			ps.Open = TIMEOUT
@@ -89,7 +89,7 @@ func scan(host string, port int, network string, timeout int) *PortState {
 }
 
 // Run the scann process for all hosts
-func Run(hl *host.HostList, ports *[]int, network string, timeout int) *[]ScanResult {
+func Run(hl *host.HostList, ports *[]int, network string, timeout time.Duration) *[]ScanResult {
 	results := make([]ScanResult, len(hl.Hosts))
 
 	for i, h := range hl.Hosts {

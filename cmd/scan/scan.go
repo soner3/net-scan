@@ -45,7 +45,7 @@ tcp, tcp4, tcp6, udp, udp4, udp6, ip, ip4, ip6, unix, unixgram, unixpacket.`,
 		ports := viper.GetIntSlice("scan.ports")
 		portRange := viper.GetString("scan.port-range")
 		network := viper.GetString("scan.network")
-		timeout := viper.GetInt("scan.timeout")
+		timeout := viper.GetDuration("scan.timeout")
 		filter := viper.GetString("scan.filter-state")
 
 		return action.ScanAction(os.Stdout, action.NewConfig(filename, ports, portRange, network, timeout, filter))
@@ -58,7 +58,7 @@ func init() {
 	ScanCmd.Flags().IntSliceP("ports", "p", []int{}, "Ports to scan on the target hosts (e.g., 22,80,443)")
 	ScanCmd.Flags().StringP("port-range", "r", "", "Port range to scan on the target hosts (e.g., 20-100)")
 	ScanCmd.Flags().StringP("network", "n", "tcp", "Network protocol to use (tcp, udp, tcp4, tcp6, udp4, udp6, ip, ip4, ip6, unix, unixgram, unixpacket)")
-	ScanCmd.Flags().IntP("timeout", "t", 1000, "Timeout per port in milliseconds")
+	ScanCmd.Flags().DurationP("timeout", "t", 1000, "Timeout per port in milliseconds")
 	ScanCmd.Flags().StringP("filter-state", "s", "", "Filter scanned results by port state (open, closed, timeout)")
 
 	viper.BindPFlag("scan.ports", ScanCmd.Flags().Lookup("ports"))

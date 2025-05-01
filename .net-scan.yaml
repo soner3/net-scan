@@ -4,4 +4,13 @@ scan:
   port-range: "10-11"
   network: "tcp"
   timeout: 1000
-  filter-state: "open"
+  filter-state: ""
+ping:
+  timeout: 10s
+  interval: 1s
+  count: 0
+  size: 56
+  ttl: 64
+  iface: ""
+  tclass: -1
+  privileged: true

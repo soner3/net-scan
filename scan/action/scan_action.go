@@ -27,6 +27,7 @@ import (
 	"io"
 	"os"
 	"slices"
+	"time"
 
 	"github.com/soner3/net-scan/host"
 	"github.com/soner3/net-scan/scan"
@@ -56,11 +57,11 @@ type Config struct {
 	ports     []int
 	portRange string
 	network   string
-	timeout   int
+	timeout   time.Duration
 	filter    string
 }
 
-func NewConfig(filename string, ports []int, portRange string, network string, timeout int, filter string) *Config {
+func NewConfig(filename string, ports []int, portRange string, network string, timeout time.Duration, filter string) *Config {
 	return &Config{
 		filename:  filename,
 		ports:     ports,
