@@ -22,7 +22,10 @@ THE SOFTWARE.
 package action
 
 import (
+	"errors"
+	"fmt"
 	"io"
+	"os"
 	"time"
 
 	"github.com/soner3/net-scan/host"
@@ -45,7 +48,43 @@ func NewConfig(filename string, callFrequency, timeout time.Duration, secure boo
 	}
 }
 
+var (
+	ErrInvalidHTTP = errors.New("invalid HTTP config")
+	ErrEmptyFile   = errors.New("host file is empty")
+)
+
+func (cfg *Config) validate() error {
+	if cfg.Filename == "" {
+		return fmt.Errorf("%w: filename must be set", ErrInvalidHTTP)
+	}
+
+	if _, err := os.Stat(cfg.Filename); err != nil {
+		return fmt.Errorf("%w: file not found: %s", ErrInvalidHTTP, err.Error())
+	}
+
+	hl := host.NewHostList()
+	if err := hl.Load(cfg.Filename); err != nil {
+		return err
+	}
+	if len(hl.Hosts) == 0 {
+		return fmt.Errorf("%w: %s", ErrEmptyFile, cfg.Filename)
+	}
+
+	if cfg.CallFrequency <= 0 {
+		return fmt.Errorf("%w: call-frequency must be > 0", ErrInvalidHTTP)
+	}
+	if cfg.Timeout <= 0 {
+		return fmt.Errorf("%w: timeout must be > 0", ErrInvalidHTTP)
+	}
+
+	return nil
+}
+
 func HttpAction(out io.Writer, cfg *Config) error {
+	if err := cfg.validate(); err != nil {
+		return err
+	}
+
 	hl := host.NewHostList()
 	if err := hl.Load(cfg.Filename); err != nil {
 		return err

@@ -22,7 +22,10 @@ THE SOFTWARE.
 package action
 
 import (
+	"errors"
+	"fmt"
 	"io"
+	"os"
 	"time"
 
 	"github.com/soner3/net-scan/host"
@@ -55,7 +58,55 @@ func NewConfig(filename string, timeout, interval time.Duration, count, size, tt
 	}
 }
 
+var (
+	ErrEmptyFile   = errors.New("host file is empty")
+	ErrInvalidPing = errors.New("invalid ping config")
+)
+
+func (cfg *Config) validate() error {
+	if cfg.Filename == "" {
+		return fmt.Errorf("%w: filename must be set", ErrInvalidPing)
+	}
+
+	if _, err := os.Stat(cfg.Filename); err != nil {
+		return fmt.Errorf("%w: %s", ErrInvalidPing, err.Error())
+	}
+
+	hl := host.NewHostList()
+	if err := hl.Load(cfg.Filename); err != nil {
+		return err
+	}
+	if len(hl.Hosts) == 0 {
+		return ErrEmptyFile
+	}
+
+	if cfg.Count < 0 {
+		return fmt.Errorf("%w: count must be ≥ 0", ErrInvalidPing)
+	}
+	if cfg.Size < 0 || cfg.Size > 65500 {
+		return fmt.Errorf("%w: packet size must be between 0 and 65500", ErrInvalidPing)
+	}
+	if cfg.Interval <= 0 {
+		return fmt.Errorf("%w: interval must be > 0", ErrInvalidPing)
+	}
+	if cfg.Timeout <= 0 {
+		return fmt.Errorf("%w: timeout must be > 0", ErrInvalidPing)
+	}
+	if cfg.Ttl <= 0 || cfg.Ttl > 255 {
+		return fmt.Errorf("%w: ttl must be in range 1–255", ErrInvalidPing)
+	}
+	if cfg.Tclass < -1 || cfg.Tclass > 255 {
+		return fmt.Errorf("%w: tclass must be between -1 and 255", ErrInvalidPing)
+	}
+
+	return nil
+}
+
 func PingAction(out io.Writer, cfg *Config) error {
+	if err := cfg.validate(); err != nil {
+		return err
+	}
+
 	hl := host.NewHostList()
 	if err := hl.Load(cfg.Filename); err != nil {
 		return err
