@@ -25,6 +25,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/soner3/net-scan/cmd/dns"
 	"github.com/soner3/net-scan/cmd/host"
 	"github.com/soner3/net-scan/cmd/http"
 	"github.com/soner3/net-scan/cmd/ping"
@@ -79,6 +80,7 @@ func init() {
 	rootCmd.AddCommand(scan.ScanCmd)
 	rootCmd.AddCommand(ping.PingCmd)
 	rootCmd.AddCommand(http.HttpCmd)
+	rootCmd.AddCommand(dns.DnsCmd)
 }
 
 // initConfig reads in config file and ENV variables if set.
