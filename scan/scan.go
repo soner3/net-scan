@@ -25,6 +25,7 @@ import (
 	"fmt"
 	"net"
 	"os"
+	"sort"
 	"time"
 
 	"github.com/soner3/net-scan/host"
@@ -108,6 +109,18 @@ func Run(hl *host.HostList, ports *[]int, network string, timeout time.Duration)
 		}
 
 	}
+
+	for i := range results {
+		if results[i].PortStates != nil {
+			sort.Slice(*results[i].PortStates, func(a, b int) bool {
+				return (*results[i].PortStates)[a].Port < (*results[i].PortStates)[b].Port
+			})
+		}
+	}
+
+	sort.Slice(results, func(i, j int) bool {
+		return results[i].Host < results[j].Host
+	})
 
 	return &results
 }

@@ -23,6 +23,7 @@ package scan_test
 
 import (
 	"net"
+	"slices"
 	"strconv"
 	"testing"
 	"time"
@@ -32,91 +33,83 @@ import (
 )
 
 func TestRun(t *testing.T) {
-	testCases := []struct {
-		name        string
-		expectedOut string
-	}{
-		{"PortOpen", "open"},
-		{"PortClosed", "closed"},
-		{"PortTimeout", "timeout"},
-	}
-
 	localhost := "localhost"
 	timeoutHost := "192.0.2.1"
 	hl := host.NewHostList()
 	hl.Add(localhost)
+
 	ports := []int{}
-	for _, tc := range testCases {
-		if tc.name != "PortTimeout" {
-			ln, err := net.Listen("tcp", net.JoinHostPort("localhost", "0"))
-			if err != nil {
-				t.Fatal(err)
-			}
-			defer ln.Close()
-			_, portString, err := net.SplitHostPort(ln.Addr().String())
-			if err != nil {
-				t.Fatal(err)
-			}
-			port, err := strconv.Atoi(portString)
-			if err != nil {
-				t.Fatal(err)
-			}
-			ports = append(ports, port)
+	portStatus := map[int]string{}
 
-			if tc.name == "PortClosed" {
-				ln.Close()
-			}
-
-		}
-
+	ln1, err := net.Listen("tcp", "localhost:0")
+	if err != nil {
+		t.Fatal(err)
 	}
+	defer ln1.Close()
+	_, p1str, _ := net.SplitHostPort(ln1.Addr().String())
+	p1, _ := strconv.Atoi(p1str)
+	ports = append(ports, p1)
+	portStatus[p1] = "open"
+
+	ln2, err := net.Listen("tcp", "localhost:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, p2str, _ := net.SplitHostPort(ln2.Addr().String())
+	p2, _ := strconv.Atoi(p2str)
+	ln2.Close()
+	ports = append(ports, p2)
+	portStatus[p2] = "closed"
+
+	slices.Sort(ports)
 
 	localhostRes := scan.Run(hl, &ports, "tcp", time.Second)
+
 	hl.Remove(localhost)
 	hl.Add(timeoutHost)
 	timeoutRes := scan.Run(hl, &ports, "tcp", time.Second)
 
-	if len(*(*localhostRes)[0].PortStates) != 2 {
-		t.Errorf("Expected %d, got %d instead", 2, len(*localhostRes))
-	}
-
-	if len(*(*timeoutRes)[0].PortStates) != 2 {
-		t.Errorf("Expected %d, got %d instead", 2, len(*timeoutRes))
-	}
-
-	if (*localhostRes)[0].Host != localhost {
-		t.Errorf("Expected %s, got %s instead", localhost, (*localhostRes)[0].Host)
-	}
-
-	if (*timeoutRes)[0].Host != timeoutHost {
-		t.Errorf("Expected %s, got %s instead", localhost, (*localhostRes)[0].Host)
-	}
-
-	if (*localhostRes)[0].NotFound {
-		t.Errorf("Expected host %s to be found", (*localhostRes)[0].Host)
-	}
-
-	if (*timeoutRes)[0].NotFound {
-		t.Errorf("Expected host %s to be found", (*localhostRes)[0].Host)
-	}
-
-	for _, res := range *localhostRes {
-		if (*res.PortStates)[0].Open.String() != "open" {
-			t.Errorf("Expected %s, got %s instead", "open", (*res.PortStates)[0].Open.String())
-		}
-		if (*res.PortStates)[1].Open.String() != "closed" {
-			t.Errorf("Expected %s, got %s instead", "closed", (*res.PortStates)[1].Open.String())
-		}
-	}
-
-	for _, res := range *timeoutRes {
-		for _, ps := range *res.PortStates {
-			if ps.Open.String() != "timeout" {
-				t.Errorf("Expected %s, got %s instead", "timeout", ps.Open.String())
+	findHost := func(results *[]scan.ScanResult, host string) *scan.ScanResult {
+		for _, r := range *results {
+			if r.Host == host {
+				return &r
 			}
 		}
+		return nil
 	}
 
+	res := findHost(localhostRes, localhost)
+	if res == nil {
+		t.Fatalf("Host %s not found in results", localhost)
+	}
+	if res.NotFound {
+		t.Errorf("Expected host %s to be found", localhost)
+	}
+	if len(*res.PortStates) != 2 {
+		t.Errorf("Expected 2 ports, got %d", len(*res.PortStates))
+	}
+	for _, ps := range *res.PortStates {
+		want, ok := portStatus[ps.Port]
+		if !ok {
+			t.Errorf("Unexpected port: %d", ps.Port)
+		}
+		if ps.Open.String() != want {
+			t.Errorf("Port %d: expected %s, got %s", ps.Port, want, ps.Open.String())
+		}
+	}
+
+	res = findHost(timeoutRes, timeoutHost)
+	if res == nil {
+		t.Fatalf("Host %s not found in results", timeoutHost)
+	}
+	if res.NotFound {
+		t.Errorf("Expected host %s to be found", timeoutHost)
+	}
+	for _, ps := range *res.PortStates {
+		if ps.Open.String() != "timeout" {
+			t.Errorf("Port %d: expected timeout, got %s", ps.Port, ps.Open.String())
+		}
+	}
 }
 
 func TestHostNotFound(t *testing.T) {

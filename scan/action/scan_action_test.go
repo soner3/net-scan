@@ -159,6 +159,7 @@ func TestScanAction(t *testing.T) {
 	for _, c := range tc {
 		hl.Add(c.host)
 	}
+	slices.Sort(hl.Hosts)
 	hl.Save(cfg.filename)
 	expectedOut := ""
 	for _, c := range tc {
