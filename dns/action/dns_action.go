@@ -35,46 +35,52 @@ func DnsAction(out io.Writer, filename string) error {
 		return err
 	}
 
-	result, err := dns.Run(hl)
-	if err != nil {
-		return err
-	}
-
+	results := dns.Run(hl)
 	output := ""
 
-	for _, res := range result {
-		output += res.Host
+	labelWidth := 10
+
+	for _, res := range *results {
+		output += fmt.Sprintf("%s\n", res.Host)
 		if res.NotFound {
-			output += fmt.Sprint(out, "Not Found\n")
+			output += "\tNot Found\n\n"
 			continue
 		}
 
-		if res.CNAME != "" {
-			output += res.CNAME
+		output += formatEntry("CNAME", res.CNAME, nil, labelWidth)
+
+		for _, ip := range res.IPs {
+			if ip.To4() != nil {
+				output += formatEntry("IPv4", ip.String(), nil, labelWidth)
+			} else {
+				output += formatEntry("IPv6", ip.String(), nil, labelWidth)
+			}
 		}
-		if res.NS != "" {
-			output += res.NS
+
+		for _, ns := range res.NetNS {
+			output += formatEntry("NS", ns.Host, res.NSErr, labelWidth)
 		}
-		if res.IPv4 != "" {
-			output += res.IPv4
-		} else {
-			output += "-\n"
+		for _, mx := range res.NetMX {
+			output += formatEntry("MX", fmt.Sprintf("%s %d", mx.Host, mx.Pref), res.MXErr, labelWidth)
 		}
-		if res.IPv6 != "" {
-			output += res.IPv6
-		} else {
-			output += "-\n"
+		for _, txt := range res.TXT {
+			output += formatEntry("TXT", txt, nil, labelWidth)
 		}
-		if res.MX != "" {
-			output += res.MX
-		}
-		if res.TXT != "" {
-			output += res.TXT
-		}
+
 		output += "\n"
 	}
 
 	fmt.Fprint(out, output)
-
 	return nil
+}
+
+func formatEntry(name string, value string, err error, width int) string {
+	if value == "" {
+		value = "-"
+	}
+	errStr := ""
+	if err != nil {
+		errStr = err.Error()
+	}
+	return fmt.Sprintf("\t%-*s %-50s %s\n", width, name, value, errStr)
 }

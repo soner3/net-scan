@@ -22,100 +22,87 @@ THE SOFTWARE.
 package dns
 
 import (
-	"fmt"
 	"net"
 
 	"github.com/soner3/net-scan/host"
 )
 
+type lookupResult struct {
+	res DnsResult
+}
+
 type DnsResult struct {
-	Host     string
-	IPv4     string
-	IPv6     string
-	CNAME    string
-	MX       string
-	NS       string
-	TXT      string
+	Host  string
+	IPs   []net.IP
+	CNAME string
+	MXResult
+	NSResult
+	TXT      []string
 	NotFound bool
 }
 
-func NewDnsResult() *DnsResult {
-	return &DnsResult{}
+type MXResult struct {
+	NetMX []*net.MX
+	MXErr error
 }
 
-func lookupDns(host string) (*DnsResult, error) {
-	res := NewDnsResult()
+type NSResult struct {
+	NetNS []*net.NS
+	NSErr error
+}
+
+func lookupDns(host string) DnsResult {
+	res := DnsResult{}
+	res.Host = host
 
 	cn, err := net.LookupCNAME(host)
 	if err != nil {
-		res.CNAME = "CNAME -\n"
+		res.NotFound = true
+		return res
 	} else {
-		res.CNAME = fmt.Sprintf("CNAME %s\n", cn)
+		res.CNAME = cn
 	}
 
 	mxs, err := net.LookupMX(host)
-	if err != nil {
-		res.MX = "MX -\n"
-	} else {
-		for _, mx := range mxs {
-			res.MX = fmt.Sprintf("MX %s %d\n", mx.Host, mx.Pref)
-		}
-	}
+	res.NetMX = mxs
+	res.MXErr = err
 
 	nss, err := net.LookupNS(host)
-	if err != nil {
-		res.NS = "Name Server: -\n"
-	} else {
-		for _, ns := range nss {
-			res.NS = fmt.Sprintf("Name Server: %s\n", ns.Host)
-		}
-	}
+	res.NetNS = nss
+	res.NSErr = err
 
 	txts, err := net.LookupTXT(host)
 	if err != nil {
-		res.TXT = "TXT -\n"
+		res.TXT = nil
 	} else {
-		for _, txt := range txts {
-			res.TXT = fmt.Sprintf("TXT %s\n", txt)
-		}
+		res.TXT = txts
 	}
 
 	ips, err := net.LookupIP(host)
 	if err != nil {
-		res.IPv4 = "IPv4 -\n"
-		res.IPv6 = "IPv6 -\n"
+		res.IPs = nil
 	} else {
-		for _, ip := range ips {
-			if ip.To4() != nil {
-				res.IPv4 = fmt.Sprintf("IPv4 %s\n", ip)
-			} else {
-				res.IPv6 = fmt.Sprintf("IPv6 %s\n", ip)
-			}
-		}
-
+		res.IPs = ips
 	}
 
-	return res, nil
+	return res
 }
 
-func Run(hl *host.HostList) ([]*DnsResult, error) {
+func Run(hl *host.HostList) *[]DnsResult {
+	results := make([]DnsResult, 0, len(hl.Hosts))
+	res := make(chan DnsResult, len(hl.Hosts))
 
-	results := make([]*DnsResult, len(hl.Hosts))
-
-	for i, h := range hl.Hosts {
-		results[i] = NewDnsResult()
-		results[i].Host = fmt.Sprintf("Host: %s\n", h)
-		if _, err := net.LookupHost(h); err != nil {
-			results[i].NotFound = true
-			continue
-		}
-		var err error
-		results[i], err = lookupDns(h)
-		if err != nil {
-			return nil, err
-		}
-
+	for _, h := range hl.Hosts {
+		h := h
+		go func() {
+			res <- lookupDns(h)
+		}()
 	}
-	return results, nil
+
+	for range hl.Hosts {
+		results = append(results, <-res)
+	}
+
+	return &results
 
 }
