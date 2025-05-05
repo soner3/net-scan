@@ -37,10 +37,13 @@ var HttpCmd = &cobra.Command{
 	Long: `The http command sends periodic HTTP requests to hosts defined in a file.
 
 You can configure the frequency and timeout of the requests. Optionally, you can
-enable HTTPS with the --secure flag.
+disable HTTPS with the --secure flag.
+
+Each host is checked sequentially. The next host will only be processed once the previous
+check completes. Parallel execution is currently not supported.
 
 Example:
-  net-scan http --call-frequency 1s --timeout 5s --secure
+  net-scan http --call-frequency 1s --timeout 5s --secure false
 `,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		cfg := &action.Config{
@@ -51,6 +54,7 @@ Example:
 		}
 		return action.HttpAction(os.Stdout, cfg)
 	},
+	SilenceUsage: true,
 }
 
 func init() {

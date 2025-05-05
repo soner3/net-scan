@@ -55,6 +55,10 @@ due to Go limitations in x/net/ipv4 and ipv6.
 This command is based on the open-source library:
   https://github.com/prometheus-community/pro-bing
 
+Note:
+Each host is pinged sequentially. The next host will only be processed after the current
+ping completes or is interrupted. To skip to the next host manually, press Ctrl+C.
+
 Examples:
   net-scan ping --count 5 --interval 1s --timeout 5s
   net-scan ping --privileged
@@ -74,6 +78,7 @@ Examples:
 		}
 		return action.PingAction(os.Stdout, cfg)
 	},
+	SilenceUsage: true,
 }
 
 func init() {

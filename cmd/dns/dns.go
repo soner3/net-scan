@@ -43,6 +43,7 @@ to quickly create a Cobra application.`,
 		filename := viper.GetString("file")
 		return action.DnsAction(os.Stdout, filename)
 	},
+	SilenceUsage: true,
 }
 
 func init() {
