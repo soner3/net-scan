@@ -18,3 +18,5 @@ http:
   call-frequency: 1s
   timeout: 5s
   secure: true
+dns:
+  search: [cname, ip4, ip6, ns, mx, txt]

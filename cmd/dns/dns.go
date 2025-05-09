@@ -41,11 +41,16 @@ This application is a tool to generate the needed files
 to quickly create a Cobra application.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		filename := viper.GetString("file")
-		return action.DnsAction(os.Stdout, filename)
+		search := viper.GetStringSlice("dns.search")
+		return action.DnsAction(os.Stdout, filename, &search)
 	},
 	SilenceUsage: true,
 }
 
 func init() {
 	DnsCmd.SetErrPrefix("DNS Error:")
+
+	DnsCmd.Flags().StringSliceP("search", "s", []string{"cname", "ip4", "ip6", "ns", "mx", "txt"}, "search for specific entries")
+
+	viper.BindPFlag("dns.search", DnsCmd.Flags().Lookup("search"))
 }

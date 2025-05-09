@@ -23,14 +23,10 @@ package dns
 
 import (
 	"net"
-	"sort"
+	"slices"
 
 	"github.com/soner3/net-scan/host"
 )
-
-type lookupResult struct {
-	res DnsResult
-}
 
 type DnsResult struct {
 	Host  string
@@ -52,7 +48,7 @@ type NSResult struct {
 	NSErr error
 }
 
-func lookupDns(host string) DnsResult {
+func lookupDns(host string, search *[]string) DnsResult {
 	res := DnsResult{}
 	res.Host = host
 
@@ -61,52 +57,59 @@ func lookupDns(host string) DnsResult {
 		res.NotFound = true
 		return res
 	} else {
-		res.CNAME = cn
+		if slices.Contains(*search, "cname") {
+			res.CNAME = cn
+		}
 	}
 
-	mxs, err := net.LookupMX(host)
-	res.NetMX = mxs
-	res.MXErr = err
-
-	nss, err := net.LookupNS(host)
-	res.NetNS = nss
-	res.NSErr = err
-
-	txts, err := net.LookupTXT(host)
-	if err != nil {
-		res.TXT = nil
-	} else {
-		res.TXT = txts
+	if slices.Contains(*search, "mx") {
+		mxs, err := net.LookupMX(host)
+		res.NetMX = mxs
+		res.MXErr = err
 	}
 
-	ips, err := net.LookupIP(host)
-	if err != nil {
-		res.IPs = nil
-	} else {
-		res.IPs = ips
+	if slices.Contains(*search, "ns") {
+		nss, err := net.LookupNS(host)
+		res.NetNS = nss
+		res.NSErr = err
+	}
+
+	if slices.Contains(*search, "txt") {
+		txts, err := net.LookupTXT(host)
+		if err != nil {
+			res.TXT = nil
+		} else {
+			res.TXT = txts
+		}
+	}
+
+	if slices.Contains(*search, "ip4") || slices.Contains(*search, "ip6") {
+		ips, err := net.LookupIP(host)
+		if err != nil {
+			res.IPs = nil
+		} else {
+			res.IPs = ips
+		}
 	}
 
 	return res
 }
 
-func Run(hl *host.HostList) *[]DnsResult {
+func Run(hl *host.HostList, search *[]string) *[]DnsResult {
 	results := make([]DnsResult, 0, len(hl.Hosts))
 	res := make(chan DnsResult, len(hl.Hosts))
 
 	for _, h := range hl.Hosts {
-		h := h
 		go func() {
-			res <- lookupDns(h)
+			res <- lookupDns(h, search)
 		}()
 	}
+
+	defer close(res)
 
 	for range hl.Hosts {
 		results = append(results, <-res)
 	}
-
-	sort.Slice(results, func(i, j int) bool {
-		return results[i].Host < results[j].Host
-	})
 
 	return &results
 

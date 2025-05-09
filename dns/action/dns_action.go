@@ -24,53 +24,102 @@ package action
 import (
 	"fmt"
 	"io"
+	"slices"
+	"sort"
 
 	"github.com/soner3/net-scan/dns"
 	"github.com/soner3/net-scan/host"
 )
 
-func DnsAction(out io.Writer, filename string) error {
+type IndexOutput struct {
+	Index  int
+	Output string
+}
+
+func DnsAction(out io.Writer, filename string, search *[]string) error {
 	hl := host.NewHostList()
 	if err := hl.Load(filename); err != nil {
 		return err
 	}
 
-	results := dns.Run(hl)
-	output := ""
-
+	results := dns.Run(hl, search)
 	labelWidth := 10
 
-	for _, res := range *results {
-		output += fmt.Sprintf("%s\n", res.Host)
-		if res.NotFound {
-			output += "\tNot Found\n\n"
-			continue
-		}
+	outputChannel := make(chan IndexOutput, len(*results))
+	defer close(outputChannel)
 
-		output += formatEntry("CNAME", res.CNAME, nil, labelWidth)
+	for i, res := range *results {
+		go func() {
+			output := ""
 
-		for _, ip := range res.IPs {
-			if ip.To4() != nil {
-				output += formatEntry("IPv4", ip.String(), nil, labelWidth)
-			} else {
-				output += formatEntry("IPv6", ip.String(), nil, labelWidth)
+			output += fmt.Sprintf("%s\n", res.Host)
+			if res.NotFound {
+				output += "\tNot Found\n\n"
+				outputChannel <- IndexOutput{i, output}
+				return
 			}
-		}
 
-		for _, ns := range res.NetNS {
-			output += formatEntry("NS", ns.Host, res.NSErr, labelWidth)
-		}
-		for _, mx := range res.NetMX {
-			output += formatEntry("MX", fmt.Sprintf("%s %d", mx.Host, mx.Pref), res.MXErr, labelWidth)
-		}
-		for _, txt := range res.TXT {
-			output += formatEntry("TXT", txt, nil, labelWidth)
-		}
+			if slices.Contains(*search, "cname") {
+				output += formatEntry("CNAME", res.CNAME, nil, labelWidth)
+			}
 
-		output += "\n"
+			if slices.Contains(*search, "ip4") || slices.Contains(*search, "ip6") {
+				for _, ip := range res.IPs {
+					if ip.To4() != nil {
+						if slices.Contains(*search, "ip4") {
+							output += formatEntry("IPv4", ip.String(), nil, labelWidth)
+						}
+					} else {
+						if slices.Contains(*search, "ip6") {
+							output += formatEntry("IPv6", ip.String(), nil, labelWidth)
+						}
+					}
+				}
+			}
+
+			if slices.Contains(*search, "ns") {
+				for _, ns := range res.NetNS {
+					output += formatEntry("NS", ns.Host, res.NSErr, labelWidth)
+				}
+			}
+
+			if slices.Contains(*search, "mx") {
+				for _, mx := range res.NetMX {
+					output += formatEntry("MX", fmt.Sprintf("%s %d", mx.Host, mx.Pref), res.MXErr, labelWidth)
+				}
+			}
+
+			if slices.Contains(*search, "txt") {
+				for _, txt := range res.TXT {
+					output += formatEntry("TXT", txt, nil, labelWidth)
+				}
+			}
+
+			if output == fmt.Sprintf("%s\n", res.Host) {
+				output += "\tNone\n"
+			}
+
+			output += "\n"
+			outputChannel <- IndexOutput{i, output}
+		}()
 	}
 
-	fmt.Fprint(out, output)
+	outputResult := ""
+	collectedResults := make([]IndexOutput, len(*results))
+
+	for i := range len(*results) {
+		collectedResults[i] = <-outputChannel
+	}
+
+	sort.Slice(collectedResults, func(i, j int) bool {
+		return collectedResults[i].Index < collectedResults[j].Index
+	})
+
+	for _, v := range collectedResults {
+		outputResult += v.Output
+	}
+
+	fmt.Fprint(out, outputResult)
 	return nil
 }
 
