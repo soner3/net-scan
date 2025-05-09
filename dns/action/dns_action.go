@@ -49,6 +49,8 @@ func DnsAction(out io.Writer, filename string, search *[]string) error {
 	defer close(outputChannel)
 
 	for i, res := range *results {
+		i := i
+		res := res
 		go func() {
 			output := ""
 

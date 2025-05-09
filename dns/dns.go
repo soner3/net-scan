@@ -101,12 +101,11 @@ func Run(hl *host.HostList, search *[]string) *[]DnsResult {
 	res := make(chan DnsResult, len(hl.Hosts))
 
 	for _, h := range hl.Hosts {
+		h := h
 		go func() {
 			res <- lookupDns(h, search)
 		}()
 	}
-
-	defer close(res)
 
 	for range hl.Hosts {
 		results = append(results, <-res)

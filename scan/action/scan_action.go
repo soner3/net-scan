@@ -27,6 +27,7 @@ import (
 	"io"
 	"os"
 	"slices"
+	"sort"
 	"time"
 
 	"github.com/soner3/net-scan/host"
@@ -59,6 +60,11 @@ type Config struct {
 	network   string
 	timeout   time.Duration
 	filter    string
+}
+
+type IndexOutput struct {
+	Index  int
+	Output string
 }
 
 func NewConfig(filename string, ports []int, portRange string, network string, timeout time.Duration, filter string) *Config {
@@ -143,8 +149,9 @@ func ScanAction(out io.Writer, cfg *Config) error {
 	}
 
 	result := scan.Run(hl, resolvedPorts, cfg.network, cfg.timeout)
+	outputChannel := make(chan IndexOutput, len(*result))
+	for i, res := range *result {
 
-	for _, res := range *result {
 		output := fmt.Sprintf("%s:\n", res.Host)
 		if res.NotFound {
 			output += "\tNot Found\n"
@@ -162,13 +169,25 @@ func ScanAction(out io.Writer, cfg *Config) error {
 			}
 		}
 		output += "\n"
-
-		_, err := fmt.Fprint(out, output)
-		if err != nil {
-			return err
-		}
-
+		outputChannel <- IndexOutput{i, output}
 	}
+
+	outputResult := ""
+	collectedResults := make([]IndexOutput, len(*result))
+
+	for i := range len(*result) {
+		collectedResults[i] = <-outputChannel
+	}
+
+	sort.Slice(collectedResults, func(i, j int) bool {
+		return collectedResults[i].Index < collectedResults[j].Index
+	})
+
+	for _, v := range collectedResults {
+		outputResult += v.Output
+	}
+
+	fmt.Fprint(out, outputResult)
 
 	return nil
 }
