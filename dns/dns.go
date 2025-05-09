@@ -24,6 +24,7 @@ package dns
 import (
 	"net"
 	"slices"
+	"sort"
 
 	"github.com/soner3/net-scan/host"
 )
@@ -110,6 +111,10 @@ func Run(hl *host.HostList, search *[]string) *[]DnsResult {
 	for range hl.Hosts {
 		results = append(results, <-res)
 	}
+
+	sort.Slice(results, func(i, j int) bool {
+		return results[i].Host < results[j].Host
+	})
 
 	return &results
 
