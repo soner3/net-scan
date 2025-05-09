@@ -32,13 +32,17 @@ import (
 // dnsCmd represents the dns command
 var DnsCmd = &cobra.Command{
 	Use:   "dns",
-	Short: "A brief description of your command",
-	Long: `A longer description that spans multiple lines and likely contains examples
-and usage of using your command. For example:
+	Short: "Performs DNS lookups for hosts in host file",
+	Long: `The dns command queries DNS records for each host in a given file.
 
-Cobra is a CLI library for Go that empowers applications.
-This application is a tool to generate the needed files
-to quickly create a Cobra application.`,
+You can specify which record types to query using the --search flag.
+Supported types include: cname, ip4, ip6, ns, mx, and txt.
+
+Examples:
+  net-scan dns --file targets.txt
+  net-scan dns --file targets.txt --search cname,ip4,txt
+
+Each result will include the requested DNS data, ordered by host.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		filename := viper.GetString("file")
 		search := viper.GetStringSlice("dns.search")
