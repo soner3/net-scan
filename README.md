@@ -1,20 +1,12 @@
 # net-scan
 
-`net-scan` is a powerful and lightweight CLI tool written in Go for **network diagnostics** and **security testing**.  
-It combines essential features like ping, port scanning, DNS lookup, HTTP checks, and banner grabbing – all in one place.
-
-> Perfect for developers, sysadmins, DevOps engineers, cybersecurity students, and anyone managing networks.
-
----
+**net-scan** is a modular CLI tool for performing network diagnostics using a centralized host file. It supports port scanning, ICMP pings, HTTP availability checks, DNS queries, and host list management. Designed for developers, sysadmins, and automation workflows.
 
 ## Features
 
-| Command         | Description                                   |
-| --------------- | --------------------------------------------- |
-| `ping`          | Check if a host is reachable via ICMP         |
-| `scan`          | TCP port scanner with timeout and range       |
-| `banner`        | Grab banners and identify services/versions   |
-| `dns`           | DNS lookup (A, MX, CNAME, PTR, etc.)          |
-| `http-check`    | Perform HTTP GET and display status + headers |
-| `trace` _(TBD)_ | Optional: Traceroute-like functionality       |
-| `whois` _(TBD)_ | Optional: WHOIS lookup for domains            |
+- Port scanning with support for custom ports, ranges, and protocols (TCP, UDP, etc.)
+- ICMP ping with support for raw sockets, TTL, traffic class, and custom intervals
+- HTTP health checks with configurable frequency, timeout, and HTTPS support
+- DNS record lookup (CNAME, A, AAAA, NS, MX, TXT)
+- Host management commands for storing frequently used targets
+- Configuration via YAML or CLI flags using [Viper](https://github.com/spf13/viper)
