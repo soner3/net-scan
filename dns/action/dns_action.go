@@ -24,6 +24,7 @@ package action
 import (
 	"fmt"
 	"io"
+	"net"
 
 	"github.com/soner3/net-scan/dns"
 	"github.com/soner3/net-scan/host"
@@ -35,42 +36,58 @@ func DnsAction(out io.Writer, filename string) error {
 		return err
 	}
 
-	result, err := dns.Run(hl)
-	if err != nil {
-		return err
-	}
+	result := dns.Run(hl)
 
 	output := ""
 
-	for _, res := range result {
-		output += res.Host
+	for _, res := range *result {
+		output += fmt.Sprintf("%s\n", res.Host)
 		if res.NotFound {
-			output += fmt.Sprint(out, "Not Found\n")
+			output += "\tNot Found\n"
 			continue
 		}
 
-		if res.CNAME != "" {
-			output += res.CNAME
+		output += fmt.Sprintf("\tCNAME\t%s\n", res.CNAME)
+
+		if res.IPs != nil {
+			ipv4List := make([]net.IP, 0)
+			ipv6List := make([]net.IP, 0)
+			for _, ip := range *res.IPs {
+				if ip.To4() != nil {
+					ipv4List = append(ipv4List, ip)
+				} else {
+					ipv6List = append(ipv6List, ip)
+				}
+
+			}
+
+			for _, ipv4 := range ipv4List {
+				output += fmt.Sprintf("\tA\t%s\n", ipv4)
+			}
+
+			for _, ipv6 := range ipv6List {
+				output += fmt.Sprintf("\tAAAA\t%s\n", ipv6)
+			}
 		}
-		if res.NS != "" {
-			output += res.NS
+
+		if res.MX != nil {
+			for _, mx := range res.MX {
+				output += fmt.Sprintf("\tMX\t%s\t%d\n", mx.Host, mx.Pref)
+			}
 		}
-		if res.IPv4 != "" {
-			output += res.IPv4
-		} else {
-			output += "-\n"
+
+		if res.TXT != nil {
+			for _, txt := range res.TXT {
+				output += fmt.Sprintf("\tTXT\t%s\n", txt)
+			}
 		}
-		if res.IPv6 != "" {
-			output += res.IPv6
-		} else {
-			output += "-\n"
+
+		if res.NS != nil {
+			for _, ns := range res.NS {
+				output += fmt.Sprintf("\tName Server\t%s\n", ns.Host)
+			}
 		}
-		if res.MX != "" {
-			output += res.MX
-		}
-		if res.TXT != "" {
-			output += res.TXT
-		}
+
 		output += "\n"
 	}
 

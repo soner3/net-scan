@@ -22,7 +22,6 @@ THE SOFTWARE.
 package dns
 
 import (
-	"fmt"
 	"net"
 
 	"github.com/soner3/net-scan/host"
@@ -30,92 +29,63 @@ import (
 
 type DnsResult struct {
 	Host     string
-	IPv4     string
-	IPv6     string
+	IPs      *[]net.IP
 	CNAME    string
-	MX       string
-	NS       string
-	TXT      string
+	MX       []*net.MX
+	NS       []*net.NS
+	TXT      []string
 	NotFound bool
 }
 
-func NewDnsResult() *DnsResult {
-	return &DnsResult{}
-}
-
-func lookupDns(host string) (*DnsResult, error) {
-	res := NewDnsResult()
+func lookupDns(host string) DnsResult {
+	res := DnsResult{Host: host}
 
 	cn, err := net.LookupCNAME(host)
 	if err != nil {
-		res.CNAME = "CNAME -\n"
+		res.NotFound = true
+		return res
 	} else {
-		res.CNAME = fmt.Sprintf("CNAME %s\n", cn)
+		res.CNAME = cn
 	}
 
 	mxs, err := net.LookupMX(host)
 	if err != nil {
-		res.MX = "MX -\n"
+		res.MX = nil
 	} else {
-		for _, mx := range mxs {
-			res.MX = fmt.Sprintf("MX %s %d\n", mx.Host, mx.Pref)
-		}
+		res.MX = mxs
 	}
 
 	nss, err := net.LookupNS(host)
 	if err != nil {
-		res.NS = "Name Server: -\n"
+		res.NS = nil
 	} else {
-		for _, ns := range nss {
-			res.NS = fmt.Sprintf("Name Server: %s\n", ns.Host)
-		}
+		res.NS = nss
 	}
 
 	txts, err := net.LookupTXT(host)
 	if err != nil {
-		res.TXT = "TXT -\n"
+		res.TXT = nil
 	} else {
-		for _, txt := range txts {
-			res.TXT = fmt.Sprintf("TXT %s\n", txt)
-		}
+		res.TXT = txts
 	}
 
 	ips, err := net.LookupIP(host)
 	if err != nil {
-		res.IPv4 = "IPv4 -\n"
-		res.IPv6 = "IPv6 -\n"
+		res.IPs = nil
 	} else {
-		for _, ip := range ips {
-			if ip.To4() != nil {
-				res.IPv4 = fmt.Sprintf("IPv4 %s\n", ip)
-			} else {
-				res.IPv6 = fmt.Sprintf("IPv6 %s\n", ip)
-			}
-		}
-
+		res.IPs = &ips
 	}
 
-	return res, nil
+	return res
 }
 
-func Run(hl *host.HostList) ([]*DnsResult, error) {
-
-	results := make([]*DnsResult, len(hl.Hosts))
+func Run(hl *host.HostList) *[]DnsResult {
+	results := make([]DnsResult, len(hl.Hosts))
 
 	for i, h := range hl.Hosts {
-		results[i] = NewDnsResult()
-		results[i].Host = fmt.Sprintf("Host: %s\n", h)
-		if _, err := net.LookupHost(h); err != nil {
-			results[i].NotFound = true
-			continue
-		}
-		var err error
-		results[i], err = lookupDns(h)
-		if err != nil {
-			return nil, err
-		}
-
+		results[i] = lookupDns(h)
 	}
-	return results, nil
+
+	return &results
 
 }
